@@ -1,4 +1,4 @@
-module github.com/pulumi/pulumi-xyz/provider
+module github.com/outscale-vbr/pulumi-outscale/provider
 
 go 1.18
 
@@ -9,4 +9,6 @@ replace (
 require (
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.47.2
 	github.com/pulumi/pulumi/sdk/v3 v3.67.1
+	github.com/outscale/terraform-provider-outscale repath-module
 )
+
