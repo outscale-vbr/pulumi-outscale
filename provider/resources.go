@@ -17,37 +17,72 @@ package outscale
 import (
 	"fmt"
 	"path/filepath"
+	"unicode"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
-	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 	"github.com/outscale-vbr/pulumi-outscale/provider/pkg/version"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/outscale/terraform-provider-outscale/outscale"
+	//outscale "github.com/outscale/terraform-provider-outscale/outscale"
+	tfpfbridge "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
+	//"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	shim 	"github.com/outscale/terraform-provider-outscale/shim"
+	//shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
+	//"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 // all of the token components used below.
 const (
 	// This variable controls the default name of the package in the package
 	// registries for nodejs and python:
-	mainPkg = "outscale"
+	outscalePkg = "outscale"
 	// modules:
-	mainMod = "index" // the outscale module
+	outscaleMod = "index" // the outscale module
 )
 
 // preConfigureCallback is called before the providerConfigure function of the underlying provider.
 // It should validate that the provider can be configured, and provide actionable errors in the case
 // it cannot be. Configuration variables can be read from `vars` using the `stringValue` function -
 // for example `stringValue(vars, "accessKey")`.
-func preConfigureCallback(vars resource.PropertyMap, c shim.ResourceConfig) error {
-	return nil
+// boolRef returns a reference to the bool argument.
+func boolRef(b bool) *bool {
+	return &b
+}
+
+// outscaleMember manufactures a type token for the Scaleway package and the given module and type.
+func outscaleMember(mod string, mem string) tokens.ModuleMember {
+	return tokens.ModuleMember(outscalePkg + ":" + mod + ":" + mem)
+}
+
+// outscaleType manufactures a type token for the Scaleway package and the given module and type.
+func outscaleType(mod string, typ string) tokens.Type {
+	return tokens.Type(outscaleMember(mod, typ))
+}
+
+// outscaleDataSource manufactures a standard resource token given a module and resource name.
+// It automatically uses the Scaleway package and names the file by simply lower casing the data
+// source's first character.
+func outscaleDataSource(mod string, res string) tokens.ModuleMember {
+	fn := string(unicode.ToLower(rune(res[0]))) + res[1:]
+	return outscaleMember(mod+"/"+fn, res)
+}
+
+// outscaleResource manufactures a standard resource token given a module and resource name.
+// It automatically uses the Scaleway package and names the file by simply lower casing the resource's
+// first character.
+func outscaleResource(mod string, res string) tokens.Type {
+	fn := string(unicode.ToLower(rune(res[0]))) + res[1:]
+	return outscaleType(mod+"/"+fn, res)
+}
+
+func refProviderLicense(license tfbridge.TFProviderLicense) *tfbridge.TFProviderLicense {
+	return &license
 }
 
 // Provider returns additional overlaid schema and metadata associated with the provider..
 func Provider() tfbridge.ProviderInfo {
 	// Instantiate the Terraform provider
-	p := shimv2.NewProvider(outscale.Provider())
+
+	
+	p := shim.ProviderShim()
 
 	// Create a Pulumi provider mapping
 	prov := tfbridge.ProviderInfo{
@@ -81,36 +116,129 @@ func Provider() tfbridge.ProviderInfo {
 		Repository: "https://github.com/outscale-vbr/pulumi-outscale",
 		// The GitHub Org for the provider - defaults to `terraform-providers`. Note that this
 		// should match the TF provider module's require directive, not any replace directives.
-		GitHubOrg: "",
+		GitHubOrg: "outscale-vbr",
 		Config:    map[string]*tfbridge.SchemaInfo{
-			// Add any required configuration here, or remove the example below if
-			// no additional points are required.
-			// "region": {
-			// 	Type: tfbridge.MakeType("region", "Region"),
-			// 	Default: &tfbridge.DefaultInfo{
-			// 		EnvVars: []string{"AWS_REGION", "AWS_DEFAULT_REGION"},
-			// 	},
-			// },
+			"access_key": {
+				Default: &tfbridge.DefaultInfo{
+					EnvVars: []string{"OSC_ACCESS_KEY"},
+				},
+			},
+			"secret_key": {
+				Default: &tfbridge.DefaultInfo{
+					EnvVars: []string{"OSC_SECRET_KEY"},
+				},
+			},
+			"region": {
+				Default: &tfbridge.DefaultInfo{
+					EnvVars: []string{"OSC_DEFAULT_REGION"},
+				},
+			},
+
 		},
-		PreConfigureCallback: preConfigureCallback,
+
 		Resources:            map[string]*tfbridge.ResourceInfo{
 			// Map each resource in the Terraform provider to a Pulumi type. Two examples
 			// are below - the single line form is the common case. The multi-line form is
 			// needed only if you wish to override types or other default options.
 			//
-			// "aws_iam_role": {Tok: tfbridge.MakeResource(mainPkg, mainMod, "IamRole")}
-			//
-			// "aws_acm_certificate": {
-			// 	Tok: tfbridge.MakeResource(mainPkg, mainMod, "Certificate"),
-			// 	Fields: map[string]*tfbridge.SchemaInfo{
-			// 		"tags": {Type: tfbridge.MakeType(mainPkg, "Tags")},
-			// 	},
-			// },
+			"outscale_access_key": {Tok: outscaleResource(outscaleMod, "AccessKey")},
+			"outscale_api_access_policy": {Tok: outscaleResource(outscaleMod, "ApiAccessPolicy")},
+			"outscale_api_access_rule": {Tok: outscaleResource(outscaleMod, "ApiAccessRule")},
+			"outscale_ca": {Tok: outscaleResource(outscaleMod, "Ca")},
+			"outscale_client_gateway": {Tok: outscaleResource(outscaleMod, "ClientGateway")},
+			"outscale_dhcp_option": {Tok: outscaleResource(outscaleMod, "DhcpOption")},
+			"outscale_flexible_gpu": {Tok: outscaleResource(outscaleMod, "FlexibleGpu")},
+			"outscale_flexible_gpu_link": {Tok: outscaleResource(outscaleMod, "FlexibleGpuLink")},
+			"outscale_image": {Tok: outscaleResource(outscaleMod, "Image")},
+			"outscale_image_export_task": {Tok: outscaleResource(outscaleMod, "ImageExportTask")},
+			"outscale_image_launch_permission": {Tok: outscaleResource(outscaleMod, "ImageLaunchPermission")},
+			"outscale_internet_service": {Tok: outscaleResource(outscaleMod, "InternetService")},
+			"outscale_internet_service_link": {Tok: outscaleResource(outscaleMod, "InternetServiceLink")},
+			"outscale_keypair": {Tok: outscaleResource(outscaleMod, "Keypair" )},
+			"outscale_load_balancer": {Tok: outscaleResource(outscaleMod, "LoadBalancer")},
+			"outscale_load_balancer_attributes": {Tok: outscaleResource(outscaleMod, "LoadBalancerAttributes")},
+			"outscale_load_balancer_lister_rules": {Tok: outscaleResource(outscaleMod, "LoadBalancerListerRules")},
+			"outscale_load_balancer_policy": {Tok: outscaleResource(outscaleMod, "LoadBalancerPolicy")},
+			"outscale_load_balancer_vms": {Tok: outscaleResource(outscaleMod, "LoadBalancerVms" )},
+			"outscale_nat_service": {Tok: outscaleResource(outscaleMod, "NatService")},
+			"outscale_net": {Tok: outscaleResource(outscaleMod, "Net")},
+			"outscale_net_access_point": {Tok: outscaleResource(outscaleMod, "NetAccessPoint")},
+			"outscale_net_attributes": {Tok: outscaleResource(outscaleMod, "NetAttributes")},
+			"outscale_net_peering": {Tok: outscaleResource(outscaleMod, "NetPeering")},
+			"outscale_net_peering_acceptation": {Tok: outscaleResource(outscaleMod, "NetPeeringAcception")},
+			"outscale_nic": {Tok: outscaleResource(outscaleMod, "Nic")},
+			"outscale_nic_link": {Tok: outscaleResource(outscaleMod, "NicLink")},
+			"outscale_nic_private_ip": {Tok: outscaleResource(outscaleMod, "NicPrivateIp")},
+			"outscale_public_ip": {Tok: outscaleResource(outscaleMod, "PublicIp")},
+			"outscale_public_ip_link": {Tok: outscaleResource(outscaleMod, "PublicIpLink")},
+			"outscale_route": {Tok: outscaleResource(outscaleMod, "Route")},
+			"outscale_route_table": {Tok: outscaleResource(outscaleMod, "RouteTable")},
+			"outscale_route_table_link": {Tok: outscaleResource(outscaleMod, "RouteTableLink")},
+			"outscale_security_group": {Tok: outscaleResource(outscaleMod, "SecurityGroup")},
+			"outscale_security_group_rule": {Tok: outscaleResource(outscaleMod, "SecurityGroupRule")},
+			"outscale_server_certificate": {Tok: outscaleResource(outscaleMod, "ServerCertificate")},
+			"outscale_snapshot": {Tok: outscaleResource(outscaleMod, "Snapshot")},
+			"outscale_snapshot_attributes": {Tok: outscaleResource(outscaleMod, "SnapshotAttributes")},
+			"outscale_snapshot_export_task": {Tok: outscaleResource(outscaleMod, "SnapshotExportTask")},
+			"outscale_subnet": {Tok: outscaleResource(outscaleMod, "Subnet")},
+			"outscale_virtual_gateway": {Tok: outscaleResource(outscaleMod, "VirtualGateway")},
+			"outscale_virtual_gateway_link": {Tok: outscaleResource(outscaleMod, "VirtualGatewayLink")},
+			"outscale_virtual_gateway_route_propagation": {Tok: outscaleResource(outscaleMod, "VirtualGatewayRoutePropagation")},
+			"outscale_vm": {Tok: outscaleResource(outscaleMod, "Vm")},
+			"outscale_volume": {Tok: outscaleResource(outscaleMod, "Volume")},
+			"outscale_volumes_link": {Tok: outscaleResource(outscaleMod, "VolumesLink")},
+			"outscale_vpn_connection": {Tok: outscaleResource(outscaleMod, "VpnConnection")},
+			"outscale_vpn_connection_route": {Tok: outscaleResource(outscaleMod, "VpnConnectionRoute")},
 		},
 		DataSources: map[string]*tfbridge.DataSourceInfo{
 			// Map each resource in the Terraform provider to a Pulumi function. An example
 			// is below.
 			// "aws_ami": {Tok: tfbridge.MakeDataSource(mainPkg, mainMod, "getAmi")},
+			"outscale_access_key": {Tok: outscaleDataSource(outscaleMod, "getAccessKey")},
+			"outscale_api_access_policy": {Tok: outscaleDataSource(outscaleMod, "getApiAccessPolicy")},
+			"outscale_api_access_rule": {Tok: outscaleDataSource(outscaleMod, "getApiAccessRule")},
+			"outscale_ca": {Tok: outscaleDataSource(outscaleMod, "getCa")},
+			"outscale_client_gateway": {Tok: outscaleDataSource(outscaleMod, "getClientGateway")},
+			"outscale_dhcp_option": {Tok: outscaleDataSource(outscaleMod, "getDhcpOption")},
+			"outscale_flexible_gpu": {Tok: outscaleDataSource(outscaleMod, "getFlexibleGpu")},
+			"outscale_image": {Tok: outscaleDataSource(outscaleMod, "getImage")},
+			"outscale_image_export_task": {Tok: outscaleDataSource(outscaleMod, "getImageExportTask")},
+			"outscale_image_launch_permission": {Tok: outscaleDataSource(outscaleMod, "getImageLaunchPermission")},
+			"outscale_internet_service": {Tok: outscaleDataSource(outscaleMod, "getInternetService")},
+			"outscale_internet_service_link": {Tok: outscaleDataSource(outscaleMod, "getInternetServiceLink")},
+			"outscale_keypair": {Tok: outscaleDataSource(outscaleMod, "getKeypair")},
+			"outscale_load_balancer": {Tok: outscaleDataSource(outscaleMod, "getLoadBalancer")},
+			"outscale_load_balancer_attributes": {Tok: outscaleDataSource(outscaleMod, "getLoadBalancerAttributes")},
+			"outscale_load_balancer_listener_rule": {Tok: outscaleDataSource(outscaleMod, "getLoadBalancerListenerRule")},
+			"ourscale_load_balancer_vms": {Tok: outscaleDataSource(outscaleMod, "getLoadBalancerVms")},
+			"outscale_nat_service": {Tok: outscaleDataSource(outscaleMod, "getNatService")},
+			"outscale_net": {Tok: outscaleDataSource(outscaleMod, "getNet")},
+			"outscale_net_access_point": {Tok: outscaleDataSource(outscaleMod, "getNetAccessPoint")},
+			"outscale_net_attributes": {Tok: outscaleDataSource(outscaleMod, "getNetAttributes")},
+			"outscale_net_peering": {Tok: outscaleDataSource(outscaleMod, "getNetPeering")},
+			"outscale_net_peering_acceptation": {Tok: outscaleDataSource(outscaleMod, "getNetPeeringAcceptation")},
+			"outscale_nic": {Tok: outscaleDataSource(outscaleMod, "getNic")},
+			"outscale_nic_link": {Tok: outscaleDataSource(outscaleMod, "getNicLink")},
+			"outscale_nic_private_ip": {Tok: outscaleDataSource(outscaleMod, "getNicPrivateIp")},
+			"outscale_public_ip": {Tok: outscaleDataSource(outscaleMod, "getPublicIp")},
+			"outscale_public_ip_link": {Tok: outscaleDataSource(outscaleMod, "getPublicIpLink")},
+			"outscale_route": {Tok: outscaleDataSource(outscaleMod, "getRoute" )},
+			"outscale_route_table": {Tok: outscaleDataSource(outscaleMod, "getRouteTable")},
+			"outscale_route_table_link": {Tok: outscaleDataSource(outscaleMod, "getRouteTableLink")},
+			"outscale_security_group": {Tok: outscaleDataSource(outscaleMod, "getSecurityGroup")},
+			"outscale_security_group_rule": {Tok: outscaleDataSource(outscaleMod, "getSecurityGroupRule")},
+			"outscale_server_certificate": {Tok: outscaleDataSource(outscaleMod, "getServerCertificate")},
+			"outscale_snapshot": {Tok: outscaleDataSource(outscaleMod, "getSnapshot")},
+			"outscale_snapshot_attributes": {Tok: outscaleDataSource(outscaleMod,"getSnapshotAttributes")},
+			"outscale_subnet": {Tok: outscaleDataSource(outscaleMod, "getSubnet")},
+			"outscale_virtual_gateway": {Tok: outscaleDataSource(outscaleMod, "getVirtualGateway")},
+			"outscale_virtual_gateway_link": {Tok: outscaleDataSource(outscaleMod, "getVirtualGatewayLink")},
+			"outscale_virtual_gateway_route_propagation": {Tok: outscaleDataSource(outscaleMod, "getVirtualGatewayRoutePropagation")},
+			"outscale_vm": {Tok: outscaleDataSource(outscaleMod, "getVm")},
+			"outscale_volume": {Tok: outscaleDataSource(outscaleMod, "getVolume")},
+			"outscale_volumes_link": {Tok: outscaleDataSource(outscaleMod, "getVolumesLink")},
+			"outscale_vpn_connection": {Tok: outscaleDataSource(outscaleMod, "getVpnConnection")},
+			"outscale_vpn_connection_route": {Tok: outscaleDataSource(outscaleMod, "getVpnConnectionRoute")},
 		},
 		JavaScript: &tfbridge.JavaScriptInfo{
 			// List any npm dependencies and their versions
@@ -134,10 +262,10 @@ func Provider() tfbridge.ProviderInfo {
 		},
 		Golang: &tfbridge.GolangInfo{
 			ImportBasePath: filepath.Join(
-				fmt.Sprintf("github.com/pulumi/pulumi-%[1]s/sdk/", mainPkg),
+				fmt.Sprintf("github.com/pulumi/pulumi-%[1]s/sdk/", outscalePkg),
 				tfbridge.GetModuleMajorVersion(version.Version),
 				"go",
-				mainPkg,
+				outscalePkg,
 			),
 			GenerateResourceContainerTypes: true,
 		},
@@ -151,10 +279,8 @@ func Provider() tfbridge.ProviderInfo {
 	// These are new API's that you may opt to use to automatically compute resource tokens,
 	// and apply auto aliasing for full backwards compatibility.
 	// For more information, please reference: https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge#ProviderInfo.ComputeTokens
-	prov.MustComputeTokens(tokens.SingleModule("outscale_", mainMod,
-		tokens.MakeStandard(mainPkg)))
-	prov.MustApplyAutoAliasing()
-	prov.SetAutonaming(255, "-")
-
-	return prov
+	return tfpfbridge.ProviderInfo{
+		ProviderInfo: prov,
+		NewProvider:  shim.NewProvider,
+	}
 }
