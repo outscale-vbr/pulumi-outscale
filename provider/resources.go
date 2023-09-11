@@ -18,13 +18,16 @@ import (
 	"fmt"
 	"path/filepath"
 	"unicode"
-
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/outscale-vbr/pulumi-outscale/provider/pkg/version"
-	//outscale "github.com/outscale/terraform-provider-outscale/outscale"
-	tfpfbridge "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
+	outscale "github.com/outscale/terraform-provider-outscale/outscale"
 	//"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	shim 	"github.com/outscale/terraform-provider-outscale/shim"
+	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+
+
+
 	//shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 	//"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
@@ -77,16 +80,178 @@ func refProviderLicense(license tfbridge.TFProviderLicense) *tfbridge.TFProvider
 	return &license
 }
 
+
 // Provider returns additional overlaid schema and metadata associated with the provider..
 func Provider() tfbridge.ProviderInfo {
 	// Instantiate the Terraform provider
+	outscaleSchemaProvider := &schema.Provider{
+		Schema: map[string]*schema.Schema{
+			"access_key_id": {
+				Type: schema.TypeString,
+				Required: true,
+				DefaultFunc: schema.EnvDefaultFunc("OUTSCALE_ACCESSKEYID", nil),
+				Description: "The Access Key ID for API operations",
+			},
+			"secret_key_id": {
+				Type:        schema.TypeString,
+				Required:    true,
+				DefaultFunc: schema.EnvDefaultFunc("OUTSCALE_SECRETKEYID", nil),
+				Description: "The Secret Key ID for API operations.",
+			},
+			"region": {
+				Type:        schema.TypeString,
+				Required:    true,
+				DefaultFunc: schema.EnvDefaultFunc("OUTSCALE_REGION", nil),
+				Description: "The Region for API operations.",
+			},
+			"endpoints": outscale.EndpointsSchema(),
+			"x509_cert_path": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("OUTSCALE_X509CERT", nil),
+				Description: "The path to your x509 cert",
+			},
+			"x509_key_path": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("OUTSCALE_X509KEY", nil),
+				Description: "The path to your x509 key",
+			},
+		},
 
+		ResourcesMap: map[string]*schema.Resource{
+			"outscale_vm":                                outscale.ResourceOutscaleOApiVM(),
+			"outscale_keypair":                           outscale.ResourceOutscaleOAPIKeyPair(),
+			"outscale_image":                             outscale.ResourceOutscaleOAPIImage(),
+			"outscale_internet_service_link":             outscale.ResourceOutscaleOAPIInternetServiceLink(),
+			"outscale_internet_service":                  outscale.ResourceOutscaleOAPIInternetService(),
+			"outscale_net":                               outscale.ResourceOutscaleOAPINet(),
+			"outscale_security_group":                    outscale.ResourceOutscaleOAPISecurityGroup(),
+			"outscale_outbound_rule":                     outscale.ResourceOutscaleOAPIOutboundRule(),
+			"outscale_security_group_rule":               outscale.ResourceOutscaleOAPIOutboundRule(),
+			"outscale_tag":                               outscale.ResourceOutscaleOAPITags(),
+			"outscale_public_ip":                         outscale.ResourceOutscaleOAPIPublicIP(),
+			"outscale_public_ip_link":                    outscale.ResourceOutscaleOAPIPublicIPLink(),
+			"outscale_volume":                            outscale.ResourceOutscaleOAPIVolume(),
+			"outscale_volumes_link":                      outscale.ResourceOutscaleOAPIVolumeLink(),
+			"outscale_net_attributes":                    outscale.ResourceOutscaleOAPILinAttributes(),
+			"outscale_nat_service":                       outscale.ResourceOutscaleOAPINatService(),
+			"outscale_subnet":                            outscale.ResourceOutscaleOAPISubNet(),
+			"outscale_route":                             outscale.ResourceOutscaleOAPIRoute(),
+			"outscale_route_table":                       outscale.ResourceOutscaleOAPIRouteTable(),
+			"outscale_route_table_link":                  outscale.ResourceOutscaleOAPILinkRouteTable(),
+			"outscale_nic":                               outscale.ResourceOutscaleOAPINic(),
+			"outscale_snapshot":                          outscale.ResourceOutscaleOAPISnapshot(),
+			"outscale_image_launch_permission":           outscale.ResourceOutscaleOAPIImageLaunchPermission(),
+			"outscale_net_peering":                       outscale.ResourceOutscaleOAPILinPeeringConnection(),
+			"outscale_net_peering_acceptation":           outscale.ResourceOutscaleOAPILinPeeringConnectionAccepter(),
+			"outscale_net_access_point":                  outscale.ResourceOutscaleNetAccessPoint(),
+			"outscale_nic_link":                          outscale.ResourceOutscaleOAPINetworkInterfaceAttachment(),
+			"outscale_nic_private_ip":                    outscale.ResourceOutscaleOAPINetworkInterfacePrivateIP(),
+			"outscale_snapshot_attributes":               outscale.ResourcedOutscaleOAPISnapshotAttributes(),
+			"outscale_dhcp_option":                       outscale.ResourceOutscaleDHCPOption(),
+			"outscale_client_gateway":                    outscale.ResourceOutscaleClientGateway(),
+			"outscale_virtual_gateway":                   outscale.ResourceOutscaleOAPIVirtualGateway(),
+			"outscale_virtual_gateway_link":              outscale.ResourceOutscaleOAPIVirtualGatewayLink(),
+			"outscale_virtual_gateway_route_propagation": outscale.ResourceOutscaleOAPIVirtualGatewayRoutePropagation(),
+			"outscale_vpn_connection":                    outscale.ResourceOutscaleVPNConnection(),
+			"outscale_vpn_connection_route":              outscale.ResourceOutscaleVPNConnectionRoute(),
+			"outscale_access_key":                        outscale.ResourceOutscaleAccessKey(),
+			"outscale_load_balancer":                     outscale.ResourceOutscaleOAPILoadBalancer(),
+			"outscale_load_balancer_policy":              outscale.ResourceOutscaleAppCookieStickinessPolicy(),
+			"outscale_load_balancer_vms":                 outscale.ResourceOutscaleOAPILBUAttachment(),
+			"outscale_load_balancer_attributes":          outscale.ResourceOutscaleOAPILoadBalancerAttributes(),
+			"outscale_flexible_gpu":                      outscale.ResourceOutscaleOAPIFlexibleGpu(),
+			"outscale_flexible_gpu_link":                 outscale.ResourceOutscaleOAPIFlexibleGpuLink(),
+			"outscale_image_export_task":                 outscale.ResourceOutscaleOAPIIMageExportTask(),
+			"outscale_server_certificate":                outscale.ResourceOutscaleOAPIServerCertificate(),
+			"outscale_snapshot_export_task":              outscale.ResourceOutscaleOAPISnapshotExportTask(),
+			"outscale_ca":                                outscale.ResourceOutscaleOAPICa(),
+			"outscale_api_access_rule":                   outscale.ResourceOutscaleOAPIApiAccessRule(),
+			"outscale_api_access_policy":                 outscale.ResourceOutscaleOAPIApiAccessPolicy(),
+		},
+		DataSourcesMap: map[string]*schema.Resource{
+			"outscale_vm":                           outscale.DataSourceOutscaleOAPIVM(),
+			"outscale_vms":                          outscale.DatasourceOutscaleOApiVMS(),
+			"outscale_security_group":               outscale.DataSourceOutscaleOAPISecurityGroup(),
+			"outscale_security_groups":              outscale.DataSourceOutscaleOAPISecurityGroups(),
+			"outscale_image":                        outscale.DataSourceOutscaleOAPIImage(),
+			"outscale_images":                       outscale.DataSourceOutscaleOAPIImages(),
+			"outscale_tag":                          outscale.DataSourceOutscaleOAPITag(),
+			"outscale_public_ip":                    outscale.DataSourceOutscaleOAPIPublicIP(),
+			"outscale_public_ips":                   outscale.DataSourceOutscaleOAPIPublicIPS(),
+			"outscale_volume":                       outscale.DatasourceOutscaleOAPIVolume(),
+			"outscale_volumes":                      outscale.DatasourceOutscaleOAPIVolumes(),
+			"outscale_nat_service":                  outscale.DataSourceOutscaleOAPINatService(),
+			"outscale_nat_services":                 outscale.DataSourceOutscaleOAPINatServices(),
+			"outscale_keypair":                      outscale.DatasourceOutscaleOAPIKeyPair(),
+			"outscale_keypairs":                     outscale.DatasourceOutscaleOAPIKeyPairs(),
+			"outscale_vm_state":                     outscale.DataSourceOutscaleOAPIVMState(),
+			"outscale_vm_states":                    outscale.DataSourceOutscaleOAPIVMStates(),
+			"outscale_internet_service":             outscale.DatasourceOutscaleOAPIInternetService(),
+			"outscale_internet_services":            outscale.DatasourceOutscaleOAPIInternetServices(),
+			"outscale_subnet":                       outscale.DataSourceOutscaleOAPISubnet(),
+			"outscale_subnets":                      outscale.DataSourceOutscaleOAPISubnets(),
+			"outscale_net":                          outscale.DataSourceOutscaleOAPIVpc(),
+			"outscale_nets":                         outscale.DataSourceOutscaleOAPIVpcs(),
+			"outscale_net_attributes":               outscale.DataSourceOutscaleOAPIVpcAttr(),
+			"outscale_route_table":                  outscale.DataSourceOutscaleOAPIRouteTable(),
+			"outscale_route_tables":                 outscale.DataSourceOutscaleOAPIRouteTables(),
+			"outscale_snapshot":                     outscale.DataSourceOutscaleOAPISnapshot(),
+			"outscale_snapshots":                    outscale.DataSourceOutscaleOAPISnapshots(),
+			"outscale_net_peering":                  outscale.DataSourceOutscaleOAPILinPeeringConnection(),
+			"outscale_net_peerings":                 outscale.DataSourceOutscaleOAPILinPeeringsConnection(),
+			"outscale_nics":                         outscale.DataSourceOutscaleOAPINics(),
+			"outscale_nic":                          outscale.DataSourceOutscaleOAPINic(),
+			"outscale_client_gateway":               outscale.DataSourceOutscaleClientGateway(),
+			"outscale_client_gateways":              outscale.DataSourceOutscaleClientGateways(),
+			"outscale_virtual_gateway":              outscale.DataSourceOutscaleOAPIVirtualGateway(),
+			"outscale_virtual_gateways":             outscale.DataSourceOutscaleOAPIVirtualGateways(),
+			"outscale_vpn_connection":               outscale.DataSourceOutscaleVPNConnection(),
+			"outscale_vpn_connections":              outscale.DataSourceOutscaleVPNConnections(),
+			"outscale_access_key":                   outscale.DataSourceOutscaleAccessKey(),
+			"outscale_access_keys":                  outscale.DataSourceOutscaleAccessKeys(),
+			"outscale_dhcp_option":                  outscale.DataSourceOutscaleDHCPOption(),
+			"outscale_dhcp_options":                 outscale.DataSourceOutscaleDHCPOptions(),
+			"outscale_load_balancer":                outscale.DataSourceOutscaleOAPILoadBalancer(),
+			"outscale_load_balancer_tags":           outscale.DataSourceOutscaleOAPILBUTags(),
+			"outscale_load_balancer_vm_health":      outscale.DataSourceOutscaleLoadBalancerVmsHeals(),
+			"outscale_load_balancers":               outscale.DataSourceOutscaleOAPILoadBalancers(),
+			"outscale_vm_types":                     outscale.DataSourceOutscaleOAPIVMTypes(),
+			"outscale_net_access_point":             outscale.DataSourceOutscaleNetAccessPoint(),
+			"outscale_net_access_points":            outscale.DataSourceOutscaleNetAccessPoints(),
+			"outscale_flexible_gpu":                 outscale.DataSourceOutscaleOAPIFlexibleGpu(),
+			"outscale_flexible_gpus":                outscale.DataSourceOutscaleOAPIFlexibleGpus(),
+			"outscale_subregions":                   outscale.DataSourceOutscaleOAPISubregions(),
+			"outscale_regions":                      outscale.DataSourceOutscaleOAPIRegions(),
+			"outscale_net_access_point_services":    outscale.DataSourceOutscaleOAPINetAccessPointServices(),
+			"outscale_flexible_gpu_catalog":         outscale.DataSourceOutscaleOAPIFlexibleGpuCatalog(),
+			"outscale_product_type":                 outscale.DataSourceOutscaleOAPIProductType(),
+			"outscale_product_types":                outscale.DataSourceOutscaleOAPIProductTypes(),
+			"outscale_quota":                        outscale.DataSourceOutscaleOAPIQuota(),
+			"outscale_quotas":                       outscale.DataSourceOutscaleOAPIQuotas(),
+			"outscale_image_export_task":            outscale.DataSourceOutscaleOAPIImageExportTask(),
+			"outscale_image_export_tasks":           outscale.DataSourceOutscaleOAPIImageExportTasks(),
+			"outscale_server_certificate":           outscale.DatasourceOutscaleOAPIServerCertificate(),
+			"outscale_server_certificates":          outscale.DatasourceOutscaleOAPIServerCertificates(),
+			"outscale_snapshot_export_task":         outscale.DataSourceOutscaleOAPISnapshotExportTask(),
+			"outscale_snapshot_export_tasks":        outscale.DataSourceOutscaleOAPISnapshotExportTasks(),
+			"outscale_ca":                           outscale.DataSourceOutscaleOAPICa(),
+			"outscale_cas":                          outscale.DataSourceOutscaleOAPICas(),
+			"outscale_api_access_rule":              outscale.DataSourceOutscaleOAPIApiAccessRule(),
+			"outscale_api_access_rules":             outscale.DataSourceOutscaleOAPIApiAccessRules(),
+			"outscale_api_access_policy":            outscale.DataSourceOutscaleOAPIApiAccessPolicy(),
+			"outscale_public_catalog":               outscale.DataSourceOutscaleOAPIPublicCatalog(),
+			"outscale_account":                      outscale.DataSourceAccount(),
+			"outscale_accounts":                     outscale.DataSourceAccounts(),
+		},
+
+		ConfigureFunc: outscale.ProviderConfigureClient,
+	}
 	
-	p := shim.ProviderShim()
-
-	// Create a Pulumi provider mapping
 	prov := tfbridge.ProviderInfo{
-		P:    p,
+
+		P: shimv1.NewProvider(outscaleSchemaProvider),
 		Name: "outscale",
 		// DisplayName is a way to be able to change the casing of the provider
 		// name when being displayed on the Pulumi registry
@@ -118,22 +283,21 @@ func Provider() tfbridge.ProviderInfo {
 		// should match the TF provider module's require directive, not any replace directives.
 		GitHubOrg: "outscale-vbr",
 		Config:    map[string]*tfbridge.SchemaInfo{
-			"access_key": {
+			"access_key_id": {
 				Default: &tfbridge.DefaultInfo{
-					EnvVars: []string{"OSC_ACCESS_KEY"},
+					EnvVars: []string{"OUTSCALE_ACCESSKEYID"},
 				},
 			},
-			"secret_key": {
+			"secret_key_id": {
 				Default: &tfbridge.DefaultInfo{
-					EnvVars: []string{"OSC_SECRET_KEY"},
+					EnvVars: []string{"OUTSCALE_SECRETKEYID"},
 				},
 			},
 			"region": {
 				Default: &tfbridge.DefaultInfo{
-					EnvVars: []string{"OSC_DEFAULT_REGION"},
+					EnvVars: []string{"OUTSCALE_REGION"},
 				},
 			},
-
 		},
 
 		Resources:            map[string]*tfbridge.ResourceInfo{
@@ -141,7 +305,12 @@ func Provider() tfbridge.ProviderInfo {
 			// are below - the single line form is the common case. The multi-line form is
 			// needed only if you wish to override types or other default options.
 			//
-			"outscale_access_key": {Tok: outscaleResource(outscaleMod, "AccessKey")},
+			"outscale_access_key": {
+				Tok: outscaleResource(outscaleMod, "AccessKey"),
+				Docs: &tfbridge.DocInfo{
+					Source: "access_key.md",
+				},
+			},
 			"outscale_api_access_policy": {Tok: outscaleResource(outscaleMod, "ApiAccessPolicy")},
 			"outscale_api_access_rule": {Tok: outscaleResource(outscaleMod, "ApiAccessRule")},
 			"outscale_ca": {Tok: outscaleResource(outscaleMod, "Ca")},
@@ -157,7 +326,6 @@ func Provider() tfbridge.ProviderInfo {
 			"outscale_keypair": {Tok: outscaleResource(outscaleMod, "Keypair" )},
 			"outscale_load_balancer": {Tok: outscaleResource(outscaleMod, "LoadBalancer")},
 			"outscale_load_balancer_attributes": {Tok: outscaleResource(outscaleMod, "LoadBalancerAttributes")},
-			"outscale_load_balancer_lister_rules": {Tok: outscaleResource(outscaleMod, "LoadBalancerListerRules")},
 			"outscale_load_balancer_policy": {Tok: outscaleResource(outscaleMod, "LoadBalancerPolicy")},
 			"outscale_load_balancer_vms": {Tok: outscaleResource(outscaleMod, "LoadBalancerVms" )},
 			"outscale_nat_service": {Tok: outscaleResource(outscaleMod, "NatService")},
@@ -169,6 +337,7 @@ func Provider() tfbridge.ProviderInfo {
 			"outscale_nic": {Tok: outscaleResource(outscaleMod, "Nic")},
 			"outscale_nic_link": {Tok: outscaleResource(outscaleMod, "NicLink")},
 			"outscale_nic_private_ip": {Tok: outscaleResource(outscaleMod, "NicPrivateIp")},
+			"outscale_outbound_rule": {Tok: outscaleResource(outscaleMod, "OutboundRule")},
 			"outscale_public_ip": {Tok: outscaleResource(outscaleMod, "PublicIp")},
 			"outscale_public_ip_link": {Tok: outscaleResource(outscaleMod, "PublicIpLink")},
 			"outscale_route": {Tok: outscaleResource(outscaleMod, "Route")},
@@ -181,6 +350,7 @@ func Provider() tfbridge.ProviderInfo {
 			"outscale_snapshot_attributes": {Tok: outscaleResource(outscaleMod, "SnapshotAttributes")},
 			"outscale_snapshot_export_task": {Tok: outscaleResource(outscaleMod, "SnapshotExportTask")},
 			"outscale_subnet": {Tok: outscaleResource(outscaleMod, "Subnet")},
+			"outscale_tag": {Tok: outscaleResource(outscaleMod, "Tag")},
 			"outscale_virtual_gateway": {Tok: outscaleResource(outscaleMod, "VirtualGateway")},
 			"outscale_virtual_gateway_link": {Tok: outscaleResource(outscaleMod, "VirtualGatewayLink")},
 			"outscale_virtual_gateway_route_propagation": {Tok: outscaleResource(outscaleMod, "VirtualGatewayRoutePropagation")},
@@ -195,49 +365,99 @@ func Provider() tfbridge.ProviderInfo {
 			// is below.
 			// "aws_ami": {Tok: tfbridge.MakeDataSource(mainPkg, mainMod, "getAmi")},
 			"outscale_access_key": {Tok: outscaleDataSource(outscaleMod, "getAccessKey")},
+			"outscale_access_keys": {Tok: outscaleDataSource(outscaleMod, "getAccessKeys")},
+			"outscale_account": {Tok: outscaleDataSource(outscaleMod, "getAccount")},
+			"outscale_accounts": {Tok: outscaleDataSource(outscaleMod, "getAccounts")},
 			"outscale_api_access_policy": {Tok: outscaleDataSource(outscaleMod, "getApiAccessPolicy")},
 			"outscale_api_access_rule": {Tok: outscaleDataSource(outscaleMod, "getApiAccessRule")},
+			"outscale_api_access_rules": {Tok: outscaleDataSource(outscaleMod, "getApiAccessRules")},
 			"outscale_ca": {Tok: outscaleDataSource(outscaleMod, "getCa")},
+			"outscale_cas": {Tok: outscaleDataSource(outscaleMod, "getCas")},
 			"outscale_client_gateway": {Tok: outscaleDataSource(outscaleMod, "getClientGateway")},
+			"outscale_client_gateways": {Tok: outscaleDataSource(outscaleMod, "getClientGateways")},
 			"outscale_dhcp_option": {Tok: outscaleDataSource(outscaleMod, "getDhcpOption")},
+			"outscale_dhcp_options": {Tok: outscaleDataSource(outscaleMod, "getDhcpOptions")},
 			"outscale_flexible_gpu": {Tok: outscaleDataSource(outscaleMod, "getFlexibleGpu")},
+			"outscale_flexible_gpus": {Tok: outscaleDataSource(outscaleMod, "getFlexibleGpus")},
+
+			"outscale_flexible_gpu_catalog": {Tok: outscaleDataSource(outscaleMod, "getFlexibleGpuCatalog")},
 			"outscale_image": {Tok: outscaleDataSource(outscaleMod, "getImage")},
+			"outscale_images": {Tok: outscaleDataSource(outscaleMod, "getImages")},
 			"outscale_image_export_task": {Tok: outscaleDataSource(outscaleMod, "getImageExportTask")},
+			"outscale_image_export_tasks": {Tok: outscaleDataSource(outscaleMod, "getImageExportTasks")},
 			"outscale_image_launch_permission": {Tok: outscaleDataSource(outscaleMod, "getImageLaunchPermission")},
 			"outscale_internet_service": {Tok: outscaleDataSource(outscaleMod, "getInternetService")},
+			"outscale_internet_services": {Tok: outscaleDataSource(outscaleMod, "getInternetServices")},
 			"outscale_internet_service_link": {Tok: outscaleDataSource(outscaleMod, "getInternetServiceLink")},
 			"outscale_keypair": {Tok: outscaleDataSource(outscaleMod, "getKeypair")},
+			"outscale_keypairs": {Tok: outscaleDataSource(outscaleMod, "getKeypairs")},
 			"outscale_load_balancer": {Tok: outscaleDataSource(outscaleMod, "getLoadBalancer")},
+			"outscale_load_balancer_tags": {Tok: outscaleDataSource(outscaleMod, "getLoadBalancerTags")},
+			"outscale_load_balancers": {Tok: outscaleDataSource(outscaleMod, "getLoadBalancers")},
 			"outscale_load_balancer_attributes": {Tok: outscaleDataSource(outscaleMod, "getLoadBalancerAttributes")},
-			"outscale_load_balancer_listener_rule": {Tok: outscaleDataSource(outscaleMod, "getLoadBalancerListenerRule")},
-			"ourscale_load_balancer_vms": {Tok: outscaleDataSource(outscaleMod, "getLoadBalancerVms")},
+			"outscale_load_balancer_vms": {Tok: outscaleDataSource(outscaleMod, "getLoadBalancerVms")},
+			"outscale_load_balancer_vm_health": {Tok: outscaleDataSource(outscaleMod, "getLoadBalancerVmHealth")},
 			"outscale_nat_service": {Tok: outscaleDataSource(outscaleMod, "getNatService")},
+			"outscale_nat_services": {Tok: outscaleDataSource(outscaleMod, "getNatServices")},
 			"outscale_net": {Tok: outscaleDataSource(outscaleMod, "getNet")},
+			"outscale_nets": {Tok: outscaleDataSource(outscaleMod, "getNets")},
+			"outscale_net_access_points": {Tok: outscaleDataSource(outscaleMod, "getNetAccessPoints")},
 			"outscale_net_access_point": {Tok: outscaleDataSource(outscaleMod, "getNetAccessPoint")},
+			"outscale_net_access_point_services": {Tok: outscaleDataSource(outscaleMod, "getNetAccessPointServices")},
 			"outscale_net_attributes": {Tok: outscaleDataSource(outscaleMod, "getNetAttributes")},
 			"outscale_net_peering": {Tok: outscaleDataSource(outscaleMod, "getNetPeering")},
+			"outscale_net_peerings": {Tok: outscaleDataSource(outscaleMod, "getNetPeerings")},
 			"outscale_net_peering_acceptation": {Tok: outscaleDataSource(outscaleMod, "getNetPeeringAcceptation")},
 			"outscale_nic": {Tok: outscaleDataSource(outscaleMod, "getNic")},
+			"outscale_nics": {Tok: outscaleDataSource(outscaleMod, "getNics")},
 			"outscale_nic_link": {Tok: outscaleDataSource(outscaleMod, "getNicLink")},
 			"outscale_nic_private_ip": {Tok: outscaleDataSource(outscaleMod, "getNicPrivateIp")},
+			"outscale_outbound_rule": {Tok: outscaleDataSource(outscaleMod, "getOutboundRule")},
+			"outscale_product_types": {Tok: outscaleDataSource(outscaleMod, "getProductTypes")},
+			"outscale_product_type": {Tok: outscaleDataSource(outscaleMod, "getProductType")},
+			"outscale_public_catalog": {Tok: outscaleDataSource(outscaleMod, "getPulicCatalog")},
 			"outscale_public_ip": {Tok: outscaleDataSource(outscaleMod, "getPublicIp")},
+			"outscale_public_ips": {Tok: outscaleDataSource(outscaleMod, "getPublicIps")},
 			"outscale_public_ip_link": {Tok: outscaleDataSource(outscaleMod, "getPublicIpLink")},
+			"outscale_quota": {Tok: outscaleDataSource(outscaleMod, "getQuota")},
+			"outscale_quotas": {Tok: outscaleDataSource(outscaleMod, "getQuotas") },
+			"outscale_regions": {Tok: outscaleDataSource(outscaleMod, "getRegions")},
 			"outscale_route": {Tok: outscaleDataSource(outscaleMod, "getRoute" )},
 			"outscale_route_table": {Tok: outscaleDataSource(outscaleMod, "getRouteTable")},
+			"outscale_route_tables": {Tok: outscaleDataSource(outscaleMod, "getRouteTables")},
 			"outscale_route_table_link": {Tok: outscaleDataSource(outscaleMod, "getRouteTableLink")},
 			"outscale_security_group": {Tok: outscaleDataSource(outscaleMod, "getSecurityGroup")},
+			"outscale_security_groups": {Tok: outscaleDataSource(outscaleMod, "getSecurityGroups")},
 			"outscale_security_group_rule": {Tok: outscaleDataSource(outscaleMod, "getSecurityGroupRule")},
 			"outscale_server_certificate": {Tok: outscaleDataSource(outscaleMod, "getServerCertificate")},
+			"outscale_server_certificates": {Tok: outscaleDataSource(outscaleMod, "getServerCertificates")},
 			"outscale_snapshot": {Tok: outscaleDataSource(outscaleMod, "getSnapshot")},
+			"outscale_snapshots": {Tok: outscaleDataSource(outscaleMod, "getSnapshots")},
+			"outscale_snapshot_export_task": {Tok: outscaleDataSource(outscaleMod, "getSnapshotExportTask")},
+			"outscale_snapshot_export_tasks": {Tok: outscaleDataSource(outscaleMod, "getSnapshotExportTasks")},
 			"outscale_snapshot_attributes": {Tok: outscaleDataSource(outscaleMod,"getSnapshotAttributes")},
 			"outscale_subnet": {Tok: outscaleDataSource(outscaleMod, "getSubnet")},
+			"outscale_subnets": {Tok: outscaleDataSource(outscaleMod, "getSubnets")},
+			"outscale_subregions": {Tok: outscaleDataSource(outscaleMod, "getSubregions")},
+			"outscale_tag": {Tok: outscaleDataSource(outscaleMod, "getTag")},
 			"outscale_virtual_gateway": {Tok: outscaleDataSource(outscaleMod, "getVirtualGateway")},
+			"outscale_virtual_gateways": {Tok: outscaleDataSource(outscaleMod, "getVirtualGateways")},
+
 			"outscale_virtual_gateway_link": {Tok: outscaleDataSource(outscaleMod, "getVirtualGatewayLink")},
 			"outscale_virtual_gateway_route_propagation": {Tok: outscaleDataSource(outscaleMod, "getVirtualGatewayRoutePropagation")},
 			"outscale_vm": {Tok: outscaleDataSource(outscaleMod, "getVm")},
+			"outscale_vm_state": {Tok: outscaleDataSource(outscaleMod, "getVmState")},
+			"outscale_vm_states": {Tok: outscaleDataSource(outscaleMod, "getVmStates")},
+
+			"outscale_vm_types": {Tok: outscaleDataSource(outscaleMod, "getVmTypes")},
+			"outscale_vms": {Tok: outscaleDataSource(outscaleMod, "getVms")},
+
 			"outscale_volume": {Tok: outscaleDataSource(outscaleMod, "getVolume")},
+			"outscale_volumes": {Tok: outscaleDataSource(outscaleMod, "getVolumes")},
 			"outscale_volumes_link": {Tok: outscaleDataSource(outscaleMod, "getVolumesLink")},
 			"outscale_vpn_connection": {Tok: outscaleDataSource(outscaleMod, "getVpnConnection")},
+			"outscale_vpn_connections": {Tok: outscaleDataSource(outscaleMod, "getVpnConnections")},
+
 			"outscale_vpn_connection_route": {Tok: outscaleDataSource(outscaleMod, "getVpnConnectionRoute")},
 		},
 		JavaScript: &tfbridge.JavaScriptInfo{
@@ -279,8 +499,6 @@ func Provider() tfbridge.ProviderInfo {
 	// These are new API's that you may opt to use to automatically compute resource tokens,
 	// and apply auto aliasing for full backwards compatibility.
 	// For more information, please reference: https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge#ProviderInfo.ComputeTokens
-	return tfpfbridge.ProviderInfo{
-		ProviderInfo: prov,
-		NewProvider:  shim.NewProvider,
-	}
+	prov.SetAutonaming(255, "-")
+	return prov
 }
