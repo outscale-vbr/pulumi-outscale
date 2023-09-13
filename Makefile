@@ -12,7 +12,7 @@ JAVA_GEN         := pulumi-java-gen
 JAVA_GEN_VERSION := v0.8.0
 TFGEN           := pulumi-tfgen-${PACK}
 PROVIDER        := pulumi-resource-${PACK}
-VERSION         := $(shell pulumictl get version)
+VERSION         := v0.0.0
 
 TESTPARALLELISM := 4
 
