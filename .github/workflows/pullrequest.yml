@@ -6,7 +6,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
-        use: actions/checkout@v3
+        uses: actions/checkout@v3
       - name: Install pulumictl
         uses: jaxxstorm/action-install-gh-release@v1.9.0
         with:
