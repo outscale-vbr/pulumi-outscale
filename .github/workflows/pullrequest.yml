@@ -26,6 +26,7 @@ jobs:
         working-directory: provider
       - name: Patch
         run: sudo patch /home/runner/go/pkg/mod/github.com/hashicorp/terraform-plugin-sdk@v1.17.2/internal/configs/configload/loader_snapshot.go ${GITHUB_WORKSPACE}/.osc-patch/patch.go
-      - name: create provider
-        run: make provider
-
+      - name: Build python
+        run: make build_python
+      - name: Test 
+        run: make test
