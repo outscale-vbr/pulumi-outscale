@@ -12,13 +12,14 @@ func getCwd(t *testing.T) string {
 	if err != nil {
 		t.FailNow()
 	}
-
 	return cwd
 }
 
-func getBaseOptions() integration.ProgramTestOptions {
+
+func getBaseOptions(t *testing.T) integration.ProgramTestOptions{
 	return integration.ProgramTestOptions{
-		RunUpdateTest:        false,
-		ExpectRefreshChanges: true,
+		Config: map[string]string{
+
+		},
 	}
 }
