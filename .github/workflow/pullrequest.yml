@@ -28,7 +28,3 @@ steps:
   working-directory: examples
 - name: Test 
   run: make test
-
-    
-
-
